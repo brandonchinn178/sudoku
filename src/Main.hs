@@ -1,35 +1,56 @@
 module Main where
 
-import System.Environment
-import Data.Char   (isDigit, digitToInt)
+import System.Environment   (getArgs)
+import System.IO            (hFlush, stdout)
+import Data.Char            (isDigit, digitToInt)
 import Sudoku
 
 main = do
     arguments <- getArgs
-    parseArgs arguments
-
-parseArgs :: [String] -> IO ()
-parseArgs [] = putStrLn "Please provide the filename"
-parseArgs (file:_) = do
-    contents <- readFile file
-    let rows = lines contents
-    checkFormat rows
-    let solution = sudoku $ parsePuzzle rows
+    rows <- if null arguments
+            then do
+                putStrLn "Please input a puzzle to solve (Ctrl + C to exit):"
+                inputPuzzle 1 []
+            else do
+                contents <- readFile (head arguments)
+                return $ lines contents
+    putStrLn $ show $ length rows
     -- force eval
-    solution `seq` prettyPrint solution
+    checkFormat rows `seq` let solution = sudoku $ parsePuzzle rows
+                           in solution `seq` prettyPrint solution
+
+inputPuzzle :: Int -> [String] -> IO [String]
+inputPuzzle 10 base = return base
+inputPuzzle i base = do
+    putStr $ "Row " ++ show i ++ ": "
+    hFlush stdout
+    line <- getLine
+    case compare (length line) 9 of
+        LT -> do
+            putStrLn "Invalid format: less than 9 values found"
+            inputPuzzle i base
+        GT -> do
+            putStrLn "Invalid format: more than 9 values found"
+            inputPuzzle i base
+        EQ -> inputPuzzle (i+1) (base ++ [line])
 
 parsePuzzle :: [[ Char ]] -> EmptyPuzzle
 parsePuzzle = map parseRow
     where parseRow = map (\char -> if isDigit char then Just (digitToInt char) else Nothing)
 
--- |Check the format of the file
+-- | Check the format of the file
 checkFormat :: [String] -> IO ()
-checkFormat rows
-    | length rows < 9 = error "Invalid format: less than 9 rows found"
-    | length rows > 9 = error "Invalid format: more than 9 rows found"
-    | any (\row -> length row < 9) rows = error "Invalid format: less than 9 values found in a row"
-    | any (\row -> length row > 9) rows = error "Invalid format: more than 9 values found in a row"
-    | otherwise = return ()
+checkFormat rows = case compare (length rows) 9 of
+                    LT -> error "Invalid format: less than 9 rows found"
+                    GT -> error "Invalid format: more than 9 rows found"
+                    EQ -> (all (\row -> checkFormatLine row `seq` True) rows) `seq` return ()
+
+-- | Check the format for a line
+checkFormatLine :: String -> IO ()
+checkFormatLine line = case compare (length line) 9 of
+                        LT -> error $ "Invalid format: less than 9 values found: " ++ line
+                        GT -> error $ "Invalid format: more than 9 values found: " ++ line
+                        EQ -> return ()
 
 {-
     Pretty prints the solution in the following format:
