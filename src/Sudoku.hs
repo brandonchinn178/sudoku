@@ -1,6 +1,6 @@
 module Sudoku where
 
-import Data.Maybe (catMaybes, fromJust, isJust)
+import Data.Maybe (catMaybes, fromJust, isJust, listToMaybe)
 import Data.List  ((\\), transpose)
 
 type SudokuVal      = Int                   -- The type representing Sudoku values
@@ -33,9 +33,7 @@ populatePuzzle (8,8) puzzle
 populatePuzzle (i,j) puzzle
     | isJust elem   = setAndCall elem
     | null possible = Nothing
-    | otherwise     = if null nextPuzzles
-                        then Nothing
-                        else head nextPuzzles
+    | otherwise     = listToMaybe nextPuzzles
     where   elem        = getElem puzzle (i,j)
             possible    = getPossible puzzle (i,j)
             setAndCall  = populatePuzzle (nextCoord (i,j)) . setElem puzzle (i,j)
