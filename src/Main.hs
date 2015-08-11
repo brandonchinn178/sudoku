@@ -4,6 +4,7 @@ import System.Environment   (getArgs)
 import System.IO            (hFlush, stdout)
 import Data.Char            (isDigit, digitToInt)
 import Control.Monad        (when)
+import Control.Exception    (try, SomeException)
 import Sudoku
 
 main = do
@@ -24,13 +25,12 @@ inputPuzzle i base = do
     putStr $ "Row " ++ show i ++ ": "
     hFlush stdout
     line <- getLine
-    if length line == 9
-        then inputPuzzle (i+1) (base ++ [line])
-        else do
-            let message = if length line < 9
-                            then "Invalid format: less than 9 values found"
-                            else "Invalid format: more than 9 values found"
-            putStrLn message
+
+    check <- try $ checkFormatLine line
+    case check of
+        Right () -> inputPuzzle (i+1) (base ++ [line])
+        Left e   -> do
+            putStrLn $ show (e :: SomeException)
             inputPuzzle i base
 
 parsePuzzle :: [[ Char ]] -> EmptyPuzzle
@@ -42,7 +42,7 @@ checkFormat :: [String] -> IO ()
 checkFormat rows
     | len < 9   = error "Invalid format: less than 9 rows found"
     | len > 9   = error "Invalid format: more than 9 rows found"
-    | otherwise = when (all (\row -> checkFormatLine row `seq` True) rows) $ return ()
+    | otherwise = all (\row -> checkFormatLine row `seq` True) rows `seq` return ()
     where len = length rows
 
 -- | Check the format for a line
@@ -50,8 +50,14 @@ checkFormatLine :: String -> IO ()
 checkFormatLine line
     | len < 9   = error $ "Invalid format: less than 9 values found: " ++ line
     | len > 9   = error $ "Invalid format: more than 9 values found: " ++ line
-    | otherwise = return ()
+    | otherwise = all (\x -> checkFormatChar x `seq` True) line `seq` return ()
     where len = length line
+
+-- | Check the format for a character
+checkFormatChar :: Char -> IO ()
+checkFormatChar x = if x == '.' || digitToInt x `elem` [1..9]
+                        then return ()
+                        else error $ "Invalid character: " ++ [x]
 
 {-
     Pretty prints the solution in the following format:
