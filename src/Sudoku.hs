@@ -33,7 +33,9 @@ populatePuzzle (8,8) puzzle
 populatePuzzle (i,j) puzzle
     | isJust elem   = setAndCall elem
     | null possible = Nothing
-    | otherwise     = listToMaybe nextPuzzles
+    | otherwise     = if null nextPuzzles
+                        then Nothing
+                        else head nextPuzzles
     where   elem        = getElem puzzle (i,j)
             possible    = getPossible puzzle (i,j)
             setAndCall  = populatePuzzle (nextCoord (i,j)) . setElem puzzle (i,j)
